@@ -7,11 +7,17 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import com.rickyslash.broadcastreceiverapp.databinding.ActivityMainBinding
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.util.Log
 
 // note: need to add <uses-permission> & <receiver> inside the AndroidManifest.xml
 
 class MainActivity : AppCompatActivity(), View.OnClickListener {
 
+    private lateinit var downloadReceiver: BroadcastReceiver
     private var binding: ActivityMainBinding? = null
 
     // function for requesting permission for reading SMS
@@ -32,18 +38,41 @@ class MainActivity : AppCompatActivity(), View.OnClickListener {
         setContentView(binding?.root)
 
         binding?.btnPermission?.setOnClickListener(this)
+        binding?.btnDownload?.setOnClickListener(this)
 
+        // this is the `action` when `BroadcastReceiver` is received
+        downloadReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                Log.d(DownloadService.TAG, "Download finished")
+                Toast.makeText(context, "Download finished", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // when `Broadcast Intent` that is sent matches `IntentFilter()`, the receiver will receive the broadcast
+        val downloadIntentFilter = IntentFilter(ACTION_DOWNLOAD_STATUS)
+        // this to 'register to broadcast receiver'
+        registerReceiver(downloadReceiver, downloadIntentFilter)
     }
 
     override fun onClick(v: View?) {
         when (v?.id) {
             R.id.btn_permission -> requestPermissionLauncher.launch(Manifest.permission.RECEIVE_SMS)
+            R.id.btn_download -> {
+                // this intent is used to start service from DownloadService
+                val downloadServiceIntent = Intent(this, DownloadService::class.java)
+                startService(downloadServiceIntent)
+            }
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterReceiver(downloadReceiver)
         binding = null
+    }
+
+    companion object {
+        const val ACTION_DOWNLOAD_STATUS = "download_status"
     }
 }
 
